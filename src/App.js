@@ -1,10 +1,12 @@
 import React from 'react';
-import './App.css';
 import styled from 'styled-components';
-import Webcam from 'react-webcam';
 import GIF from 'gif.js.optimized';
-import {SortableContainer, SortableElement} from 'react-sortable-hoc';
 import saveBlob from './saveBlob';
+import Camera from './Camera.js';
+import Frames from './Frames.js';
+import Select from 'react-select';
+
+import './App.css';
 
 const savedFrames = []
 let frameNum = 0;
@@ -21,11 +23,21 @@ class App extends React.Component {
   state = {
     currentFrame: 0,
     frames: savedFrames,
-    frameDelay: 125
+    frameDelay: 125,
+    videoInputs: [],
+    selectedVideoInputId: null
   }
 
   componentWillMount = () => {
     this.trashRef = React.createRef();
+    navigator
+      .mediaDevices
+      .enumerateDevices()
+      .then(
+        devices => {
+          this.setState({videoInputs: devices.filter(d => d.kind === 'videoinput')})
+        }
+      );
   }
 
   updateCurrentFrame = (currentFrame) => {
@@ -83,22 +95,38 @@ class App extends React.Component {
   render = () => {
     return (
       <AppContainer>
-        <div style={{position:'relative', height:'75vh', background: 'black'}}>
+        <div style={{flexGrow:1, maxHeight: '85vh'}}>
           <Camera
+            deviceId={this.state.selectedVideoInputId}
             frameDelay={this.state.frameDelay}
             frames={this.state.frames}
             currentFrame={this.state.currentFrame}
             addFrame={this.addFrame}
             videoStream={this.state.videoStream}
           />
-          <div style={{position: 'absolute', bottom:0, right:0}}>
-            <button onClick={this.downloadGif}>download</button>
-            <button onClick={this.clear}>clear</button>
-            {this.state.sorting && <i className="material-icons" ref={this.trashRef} style={{color:'red'}}>delete</i>}
-          </div>
+        </div>
+        <div>
+          <button onClick={this.clear}>clear</button>
+          <Select
+            styles={{
+              container: (styles) => {
+                return {
+                  display: 'inline-block',
+                  ...styles,
+                  width: 256
+                };
+              }
+            }}
+            value={this.state.selectedVideo}
+            onChange={ option => this.setState({selectedVideoInputId: option.value}) }
+            options={ this.state.videoInputs.map( vi => ({value: vi.deviceId, label: vi.label }) ) }
+          />
+          <button onClick={this.downloadGif}>download GIF</button>
         </div>
         <Frames
-          frames={this.state.frames} axis="x"
+          style={{height: '15vh'}}
+          frames={this.state.frames}
+          axis="x"
           onSortEnd={this.onSortEnd}
           onSortStart={()=>this.setState({sorting:true})}
           distance={ 2 }
@@ -109,117 +137,14 @@ class App extends React.Component {
 
 }
 
-class Camera extends React.Component {
-
-  state = {
-    mode: 'capture'
-  }
-
-  constructor(props) {
-    super(props);
-    this.webcamRef = React.createRef();
-  }
-
-  capture = () => {
-    this.props.addFrame(this.webcamRef.current.getScreenshot());
-  }
-
-  play = () => {
-    let playFrame = this.state.playFrame || 0;
-    this.setState({mode: 'play', playFrame});
-    this.playInterval = setInterval(() => {
-      playFrame += 1;
-      if (this.props.frames[playFrame] === undefined) {
-        playFrame = 0;
-      }
-      this.setState({ playFrame });
-    }, this.props.frameDelay);
-  }
-
-  stop = () => {
-    clearInterval(this.playInterval);
-    this.setState({mode: 'capture'});
-  }
-
-  render = () => {
-    return this.state.mode === 'capture' ? this.renderCamera() : this.renderPlayer();
-  }
-
-  renderCamera = () => {
-    return (
-      <CameraContainer>
-        <Webcam
-          audio={false}
-          style={{
-            width:'100%',
-            height:'100%'
-          }}
-          ref={ this.webcamRef }
-          screenshotFormat="image/jpeg"
-        />
-        <div style={{position:'absolute', bottom:0, left:0, right:0, textAlign:'center'}}>
-          <i className="material-icons" style={{color:'red', fontSize:64, cursor:'pointer'}} onClick={this.capture}>camera_alt</i>
-          <i className="material-icons" style={{color:'green', fontSize:64, cursor:'pointer'}} onClick={this.play}>play_circle_filled</i>
-        </div>
-      </CameraContainer>
-    );
-  }
-
-  renderPlayer = () => {
-    return (
-      <CameraContainer>
-        <Player src={this.props.frames[this.state.playFrame]} />
-        <div style={{position:'absolute', bottom:0, left:0, right:0, textAlign:'center'}}>
-          <i className="material-icons" style={{color:'red', fontSize:64, cursor:'pointer'}} onClick={this.stop}>stop</i>
-        </div>
-      </CameraContainer>
-    );
-  }
-}
-
-const Frame = SortableElement(({value}) => {
-  return (
-    <div style={{display:'inline-block', position: 'relative'}}>
-      <img style={{display:'block', height:'25vh'}}src={value} />
-    </div>
-  );
-});
-
-const Frames = SortableContainer(({frames}) => {
-  return (
-    <div style={{whiteSpace: 'nowrap', overflowX: 'scroll', overflowY:'hidden', height:'25vh'}}>
-      {frames.map((value, index) => (
-        <Frame key={`item-${index}`} index={index} value={value} />
-      ))}
-    </div>
-  );
-});
 
 const AppContainer = styled.div`
   width: 100%;
   height: 100%;
-  flex-direction: column
+  display: flex;
+  flex-direction: column;
 `
 
-const Player = styled.div`
-  width: 100%;
-  height: 100%;
-  background-image: url("${props => props.src}");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
-`
-const CameraContainer = styled.div`
-  position: relative;
-  height: 75vh;
-  text-align: center;
-`
 
-const FramesContainer = styled.div`
-  background: red;
-  overflow-x: scroll;
-  white-space: nowrap;
-  height: 128px;
-`
 
 export default App;
