@@ -44,7 +44,6 @@ export default class Camera extends React.Component {
   }
 
   renderCamera = () => {
-    console.log(this.props.deviceId)
     return (
       <CameraContainer>
         <Webcam

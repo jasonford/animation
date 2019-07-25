@@ -21,7 +21,7 @@ while (nextFrame) {
 class App extends React.Component {
 
   state = {
-    currentFrame: 0,
+    currentFrame: null,
     frames: savedFrames,
     frameDelay: 125,
     videoInputs: [],
@@ -92,6 +92,14 @@ class App extends React.Component {
     );
   }
 
+  removeFrame = index => {
+    this.setState({
+      currentFrame: index === this.state.currentFrame ? null : this.state.currentFrame,
+      frames: this.state.frames.filter( (f, i) => i !== index)
+    },
+    this.saveLocally)
+  }
+
   render = () => {
     return (
       <AppContainer>
@@ -124,12 +132,15 @@ class App extends React.Component {
           <button onClick={this.downloadGif}>download GIF</button>
         </div>
         <Frames
+          remove={this.removeFrame}
+          currentFrame={this.state.currentFrame}
+          onSelect={currentFrame => this.setState({currentFrame}) }
           style={{height: '15vh'}}
           frames={this.state.frames}
           axis="x"
           onSortEnd={this.onSortEnd}
           onSortStart={()=>this.setState({sorting:true})}
-          distance={ 2 }
+          distance={ 5 }
         />
       </AppContainer>
     );
